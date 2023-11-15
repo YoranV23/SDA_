@@ -6,17 +6,17 @@ import DoBotArm as Dbt  # Import the DoBotArm module
 #List of Coordinates Dobot has to follow (x, y, z, suction_on)
 coordinate_queue = [(-1, -143, 14, True), (140, -170, 90, False), (175, 13, -28, True), (0, -140, 60, False)]
 
-#Detection of shapes on the
+#Detection of shapes 
 class ShapeDetector:
     def __init__(self):
         pass
-
+    #Detect shapes using contours
     def detect_shape(self, contour):
         peri = cv2.arcLength(contour, True)
         # Increase camera sensivity.
         approx = cv2.approxPolyDP(contour, 0.04 * peri, True)
         num_sides = len(approx)
-
+        #Amount of contours to check what shape is detected.
         shape = None
         if num_sides == 3:
             shape = "Triangle"
@@ -24,9 +24,8 @@ class ShapeDetector:
             shape = "Square"
         else:
             shape = "Circle"
-
         return shape
-
+    #Detect if the color red is detected within limits 
     def detect_color(self, image, cX, cY):
         (b, g, r) = image[cY, cX]   
         if r > 200 and g < 100 and b < 100:
@@ -40,15 +39,17 @@ def detect_shapes_and_capture():
     shape_detector = ShapeDetector()
     capture_flag = False
     start_time = None
+    #Save detected shapes in an Array to print.
     detected_shapes = []
 
     while True:
         ret, frame = cap.read()
+        #Change frame to grayscale for better object detection. 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
         edges = cv2.Canny(blurred, 50, 150)
         contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
+        #Finding the center of the detected shape 
         for contour in contours:
             if cv2.contourArea(contour) < 100:
                 continue
@@ -56,12 +57,13 @@ def detect_shapes_and_capture():
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
             color = shape_detector.detect_color(frame, cX, cY)
-
+            #If color Red is detected draw a frame around the shape and put the text in the center
             if color == "Red":
                 detected_shape = shape_detector.detect_shape(contour)
                 cv2.drawContours(frame, [contour], -1, (0, 255, 0), 2)
                 cv2.putText(frame, f"{detected_shape}", (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
+               
+                #Timer to keep the camera activated for 5 seconds to prevent any changes.
                 if start_time is None:
                     start_time = time.time()
 
@@ -70,13 +72,13 @@ def detect_shapes_and_capture():
                     capture_flag = True
 
         cv2.imshow('frame', frame)
-
+        #Write the captured image and print if this is successfully completed, also print the detected shapes, and close camera
         if capture_flag:
             cv2.imwrite('captured_image.png', frame)
             print("Image captured successfully!")
             print("Detected Shapes:", detected_shapes)
             break
-
+        #Turn off camera if 'q' is pressed.
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cap.release()
